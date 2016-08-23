@@ -113,7 +113,7 @@ static long  GyroRoll, GyroPitch, GyroYaw;                    //Raw gyro values 
 static long  GyroRPFilter, GyroYawFilter;   // Tunable damping values for gyro noise
 
 
-static short Motor[4];                     //Motor output values
+static short Motor[MOTOR_COUNT];                     //Motor output values
 static long  LEDValue[LED_COUNT];           //LED outputs (copied to the LEDs by the Sensors cog)
 
 static long loopTimer;                      //Master flight loop counter - used to keep a steady update rate
@@ -131,7 +131,12 @@ static char AllowThrottleCut = 1;     // < -1100 throttle is considered a system
 static char AllowRearm = 1;           // Will get moved into Prefs once tested
 static short StartupDelay;            //Used to change convergence rates for IMU, enable battery monitor
 
-static char MotorPin[4] = {PIN_MOTOR_FL, PIN_MOTOR_FR, PIN_MOTOR_BR, PIN_MOTOR_BL };            //Motor index to pin index table
+//Motor index to pin index table
+#if defined(CONFIGURE_AS_HEXACOPTER)
+  static char MotorPin[MOTOR_COUNT] = {PIN_MOTOR_FL, PIN_MOTOR_FR, PIN_MOTOR_CR, PIN_MOTOR_BR, PIN_MOTOR_BL, PIN_MOTOR_CL };
+#else
+  static char MotorPin[MOTOR_COUNT] = {PIN_MOTOR_FL, PIN_MOTOR_FR, PIN_MOTOR_BR, PIN_MOTOR_BL };
+#endif
 
 static long LEDModeColor;
 
@@ -218,7 +223,7 @@ int main()                                    // Main function
   loopTimer = CNT;
 
   // Set all the motors to their low-throttle point
-  for( int i=0; i<4; i++ ) {
+  for( int i=0; i < MOTOR_COUNT; i++ ) {
     Motor[i] = Prefs.MinThrottle;
     Servo32_Set( MotorPin[i], Prefs.MinThrottle );
   }
@@ -446,13 +451,17 @@ void Initialize(void)
 
 
   Servo32_Init( 400 );
-  for( int i=0; i<4; i++ ) {
+  for( int i=0; i<MOTOR_COUNT; i++ ) {
     Servo32_AddFastPin( MotorPin[i] );
     Servo32_Set( MotorPin[i], Prefs.MinThrottle );
   }
 
   #ifdef ENABLE_PING_SENSOR
-  Servo32_SetPingPin( PIN_MOTOR_AUX1 );
+    #if defined(CONFIGURE_AS_HEXACOPTER)
+      Servo32_SetPingPin( PIN_RC_7 );
+    #else
+      Servo32_SetPingPin( PIN_MOTOR_AUX1 );
+    #endif
   #endif
 
   Servo32_Start();
@@ -513,12 +522,26 @@ void Initialize(void)
   LEDValue[3 +  5] = LED_Green;
   LEDValue[4 +  5] = LED_Green;
   LEDValue[5 +  5] = LED_Green;
-  LEDValue[3 + 10] = LED_Red;
-  LEDValue[4 + 10] = LED_Red;
-  LEDValue[5 + 10] = LED_Red;
+  #if defined(CONFIGURE_AS_HEXACOPTER)
+    LEDValue[3 +  10] = LED_Green;
+    LEDValue[4 +  10] = LED_Green;
+    LEDValue[5 +  10] = LED_Green;
+  #else
+    LEDValue[3 + 10] = LED_Red;
+    LEDValue[4 + 10] = LED_Red;
+    LEDValue[5 + 10] = LED_Red;
+  #endif
   LEDValue[3 + 15] = LED_Red;
   LEDValue[4 + 15] = LED_Red;
   LEDValue[5 + 15] = LED_Red;
+  #if defined(CONFIGURE_AS_HEXACOPTER)
+    LEDValue[3 + 20] = LED_Red;
+    LEDValue[4 + 20] = LED_Red;
+    LEDValue[5 + 20] = LED_Red;
+    LEDValue[3 + 25] = LED_Red;
+    LEDValue[4 + 25] = LED_Red;
+    LEDValue[5 + 25] = LED_Red;
+  #endif
 #endif
   
   FindGyroZero();
@@ -789,7 +812,7 @@ void UpdateFlightLoop(void)
       if( ( Radio.Thro < -1100 && AllowThrottleCut ) || ( idleTimeout <= 0 && IDLE_TIMEOUT != 0))
       {
         // We're in throttle cut - disarm immediately, set a timer to allow rearm
-        for( int i=0; i<4; i++ ) {
+        for( int i=0; i < MOTOR_COUNT; i++ ) {
           Motor[i] = Prefs.MinThrottle;
           Servo32_Set( MotorPin[i], Prefs.MinThrottle );
         }
@@ -931,11 +954,21 @@ void UpdateFlightLoop(void)
     }
     //-------------------------------------------
 
-    //X configuration
-    Motor[OUT_FL] = ThroOut + (((+PitchOut + RollOut - YawOut) * ThroMix) >> 7);
-    Motor[OUT_FR] = ThroOut + (((+PitchOut - RollOut + YawOut) * ThroMix) >> 7);
-    Motor[OUT_BL] = ThroOut + (((-PitchOut + RollOut + YawOut) * ThroMix) >> 7);
-    Motor[OUT_BR] = ThroOut + (((-PitchOut - RollOut - YawOut) * ThroMix) >> 7);
+    #if defined(CONFIGURE_AS_HEXACOPTER)
+      //HEX V configuration
+      Motor[OUT_FL] = ThroOut + (((+PitchOut + (RollOut>>1) - YawOut) * ThroMix) >> 7);
+      Motor[OUT_FR] = ThroOut + (((+PitchOut - (RollOut>>1) + YawOut) * ThroMix) >> 7);
+      Motor[OUT_CR] = ThroOut + (((-RollOut - YawOut) * ThroMix) >> 7);
+      Motor[OUT_BR] = ThroOut + (((-PitchOut - (RollOut>>1) + YawOut) * ThroMix) >> 7);    
+      Motor[OUT_BL] = ThroOut + (((-PitchOut + (RollOut>>1) - YawOut) * ThroMix) >> 7);
+      Motor[OUT_CL] = ThroOut + (((+RollOut + YawOut) * ThroMix) >> 7);    
+    #else
+      //X configuration
+      Motor[OUT_FL] = ThroOut + (((+PitchOut + RollOut - YawOut) * ThroMix) >> 7);
+      Motor[OUT_FR] = ThroOut + (((+PitchOut - RollOut + YawOut) * ThroMix) >> 7);
+      Motor[OUT_BL] = ThroOut + (((-PitchOut + RollOut + YawOut) * ThroMix) >> 7);
+      Motor[OUT_BR] = ThroOut + (((-PitchOut - RollOut - YawOut) * ThroMix) >> 7);
+    #endif
 
 
     // The low-throttle clamp prevents combined PID output from sending the ESCs below a minimum value
@@ -947,20 +980,36 @@ void UpdateFlightLoop(void)
       Motor[1] = clamp( Motor[1], Prefs.MinThrottleArmed , Prefs.ThrottleTest);
       Motor[2] = clamp( Motor[2], Prefs.MinThrottleArmed , Prefs.ThrottleTest);
       Motor[3] = clamp( Motor[3], Prefs.MinThrottleArmed , Prefs.ThrottleTest);
+      #if defined(CONFIGURE_AS_HEXACOPTER)
+      Motor[4] = clamp( Motor[4], Prefs.MinThrottleArmed , Prefs.ThrottleTest);
+      Motor[5] = clamp( Motor[5], Prefs.MinThrottleArmed , Prefs.ThrottleTest);
+      #endif
     }
     else {
       Motor[0] = clamp( Motor[0], Prefs.MinThrottleArmed , Prefs.MaxThrottle);
       Motor[1] = clamp( Motor[1], Prefs.MinThrottleArmed , Prefs.MaxThrottle);
       Motor[2] = clamp( Motor[2], Prefs.MinThrottleArmed , Prefs.MaxThrottle);
       Motor[3] = clamp( Motor[3], Prefs.MinThrottleArmed , Prefs.MaxThrottle);
+      #if defined(CONFIGURE_AS_HEXACOPTER)
+      Motor[4] = clamp( Motor[4], Prefs.MinThrottleArmed , Prefs.MaxThrottle);
+      Motor[5] = clamp( Motor[5], Prefs.MinThrottleArmed , Prefs.MaxThrottle);
+      #endif
     }
 
     if( Prefs.DisableMotors == 0 ) {
-      //Copy new Ouput array into servo values
+      #if defined(CONFIGURE_AS_HEXACOPTER)
+      Servo32_Set( PIN_MOTOR_FL, Motor[0] );
+      Servo32_Set( PIN_MOTOR_FR, Motor[1] );
+      Servo32_Set( PIN_MOTOR_CR, Motor[2] );
+      Servo32_Set( PIN_MOTOR_BR, Motor[3] );
+      Servo32_Set( PIN_MOTOR_BL, Motor[4] );
+      Servo32_Set( PIN_MOTOR_CL, Motor[5] );
+      #else
       Servo32_Set( PIN_MOTOR_FL, Motor[0] );
       Servo32_Set( PIN_MOTOR_FR, Motor[1] );
       Servo32_Set( PIN_MOTOR_BR, Motor[2] );
       Servo32_Set( PIN_MOTOR_BL, Motor[3] );
+      #endif
     }
   }
 
@@ -1052,7 +1101,7 @@ void ArmFlightMode(void)
 
 void DisarmFlightMode(void)
 {
-  for( int i=0; i<4; i++ ) {
+  for( int i=0; i < MOTOR_COUNT; i++ ) {
     Motor[i] = Prefs.MinThrottle;
     Servo32_Set( MotorPin[i], Prefs.MinThrottle );
   }
@@ -1069,7 +1118,7 @@ void DisarmFlightMode(void)
 void StartCompassCalibrate(void)
 {
   // Make sure the motors are totally off
-  for( int i=0; i<4; i++ ) {
+  for( int i=0; i < MOTOR_COUNT; i++ ) {
     Motor[i] = Prefs.MinThrottle;
     Servo32_Set( MotorPin[i], Prefs.MinThrottle );
   }
@@ -1308,8 +1357,12 @@ void CheckDebugInput(void)
     case Comm_Motor5:
     case Comm_Motor6:
     case Comm_Motor7:
+    #if defined(CONFIGURE_AS_HEXACOPTER)
+    case Comm_Motor8:
+    case Comm_Motor9:
+    #endif
       NudgeMotor = (HostCommand&255) - '1';    // Becomes an index from 0 to 5, 0 to 3 are motors, 4 is LED, 5 is beeper
-      if( NudgeMotor < 4 ) {
+      if( NudgeMotor < MOTOR_COUNT ) {
         NudgeCount[NudgeMotor] = 50;  // 1/5th of a second at 250 updates per sec
         NudgeMotor = -1;
       }
@@ -1499,7 +1552,7 @@ void DoDebugModeOutput(void)
   if( FlightEnabled ) return;   // Don't run this code in flight - dangerous
 
   // Check to see if any motors are supposed to test-spin
-  for( char m=0; m<4; m++ )
+  for( char m=0; m < MOTOR_COUNT; m++ )
   {
     if( NudgeCount[m] ) {
       if( --NudgeCount[m] > 0 ) {
@@ -1514,13 +1567,13 @@ void DoDebugModeOutput(void)
 
   if( NudgeMotor > -1 )
   {
-    if( NudgeMotor == 4 )                                             //Buzzer test
+    if( NudgeMotor == MOTOR_COUNT + 0 )                                             //Buzzer test
     {
       BeepHz(4500, 50);
       waitcnt( CNT + 5000000 );
       BeepHz(3500, 50);
     }
-    else if( NudgeMotor == 5 )                                        //LED test
+    else if( NudgeMotor == MOTOR_COUNT + 1 )                                        //LED test
     {
       //RGB led will run a rainbow
       for( i=0; i<256; i++ ) {
@@ -1538,7 +1591,7 @@ void DoDebugModeOutput(void)
         waitcnt( CNT + 160000 );
       }          
     }
-    else if( NudgeMotor == 6 )                                        //ESC Throttle calibration
+    else if( NudgeMotor == MOTOR_COUNT + 2 )                                        //ESC Throttle calibration
     {
       BeepHz(4500, 100);
       waitcnt( CNT + 5000000 );
@@ -1550,13 +1603,13 @@ void DoDebugModeOutput(void)
 
       if( S4_Get(0) == 0xFF )     // Safety check - Allow the user to break out by sending anything else                  
       {
-        for( int i=0; i<4; i++ ) {
+        for( int i=0; i < MOTOR_COUNT; i++ ) {
           Servo32_Set(MotorPin[i], Prefs.MaxThrottle);
         }
 
         S4_Get(0);  // Get the next character to finish
 
-        for( int i=0; i<4; i++ ) {
+        for( int i=0; i < MOTOR_COUNT; i++ ) {
           Servo32_Set(MotorPin[i], Prefs.MinThrottle);  // Must add 64 to min throttle value (in this calibration code only) if using ESCs with BLHeli version 14.0 or 14.1
         }
 
@@ -1710,7 +1763,14 @@ void All_LED( int Color )
 
   LEDValue[1 + 15] = Color;
   LEDValue[2 + 15] = Color;
-
+  
+  #if defined(CONFIGURE_AS_HEXACOPTER)
+    LEDValue[1 + 20] = Color;
+    LEDValue[2 + 20] = Color;
+  
+    LEDValue[1 + 25] = Color;
+    LEDValue[2 + 25] = Color;
+  #endif
 #else
   for( int i=0; i<LED_COUNT; i++ )
     LEDValue[i] = Color;
