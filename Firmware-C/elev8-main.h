@@ -46,12 +46,26 @@ void All_LED( int Color );
 
 #define EXTRA_LIGHTS
 
+// define to configure as a hexacopter (6 booms, ESCs, motors, props)
+// #define CONFIGURE_AS_HEXACOPTER
 
- // ESC output array indices for corresponding motors
+
+// ESC output array indices for corresponding motors
+#ifdef CONFIGURE_AS_HEXACOPTER
+#define   MOTOR_COUNT  6
+#define   OUT_FL  0
+#define   OUT_FR  1
+#define   OUT_CR  2
+#define   OUT_BR  3
+#define   OUT_BL  4
+#define   OUT_CL  5
+#else
+#define   MOTOR_COUNT  4
 #define   OUT_FL  0
 #define   OUT_FR  1
 #define   OUT_BR  2
 #define   OUT_BL  3
+#endif
 
 
 #if defined(ENABLE_PING_SENSOR) && defined(ENABLE_LASER_RANGE)
@@ -65,7 +79,7 @@ void All_LED( int Color );
 
 
 #if defined(EXTRA_LIGHTS)
-#define LED_COUNT (1 + 20 + 16)    // Add-on light kit + 16 neopixel ring
+#define LED_COUNT (1 + (MOTOR_COUNT * 5) + 16)    // Add-on light kit + 16 neopixel ring
 #else
 #define LED_COUNT 2   // basic - one additional status LED automatic
 #endif
@@ -140,5 +154,7 @@ const int LED_DimWhite = LED_White & LED_Half;
 #define Comm_Motor5     COMMAND('M','5','t','5')
 #define Comm_Motor6     COMMAND('M','6','t','6')
 #define Comm_Motor7     COMMAND('M','7','t','7')
+#define Comm_Motor8     COMMAND('M','8','t','8')
+#define Comm_Motor9     COMMAND('M','9','t','9')
 
 #endif
