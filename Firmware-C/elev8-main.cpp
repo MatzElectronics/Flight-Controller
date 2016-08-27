@@ -1017,11 +1017,6 @@ void UpdateFlightLoop(void)
     // Battery alarm at low voltage
     if( Prefs.UseBattMon != 0 && Prefs.LowVoltageAlarm != 0 )
     {
-      // If we want to use the PING sensor *and* use a timer for the alarm, we'll need to
-      // move the freq generator onto another cog.  Currently the battery monitor uses CTRB
-      // to count charge time.  Ideally the PING sensor would use CTRA to count return time,
-      // so we can have one or the other in the main thread, but not both.
-
       if( (BatteryVolts < Prefs.LowVoltageAlarmThreshold) && (BatteryVolts > 200) && ((counter & 63) == 0) )  // Make sure the voltage is above the (0 + VoltageOffset) range
       {
         BeepOn( 'A' , PIN_BUZZER_1, 4800 );
@@ -1518,7 +1513,7 @@ void DoDebugModeOutput(void)
         break;
 
       case 5: // Motor data
-        COMMLINK::BuildPacket( 5, &Motor[0], 8 );   // 8 byte payload
+        COMMLINK::BuildPacket( 5, &Motor[0], (MOTOR_COUNT * 2) );   // 8 byte payload (12 byte payload for HEX configuration)
         COMMLINK::SendPacket(port);
         break;
 
