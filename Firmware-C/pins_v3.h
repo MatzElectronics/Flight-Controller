@@ -36,13 +36,23 @@
 
 
   //Output pins to corresponding motors
-#define PIN_MOTOR_FL  12
-#define PIN_MOTOR_FR  13
-#define PIN_MOTOR_BR  14
-#define PIN_MOTOR_BL  15
+#ifdef CONFIGURE_AS_HEXACOPTER
+  #define PIN_MOTOR_FL  12
+  #define PIN_MOTOR_FR  13
+  #define PIN_MOTOR_CR  14
+  #define PIN_MOTOR_BR  15
+  #define PIN_MOTOR_BL  17
+  #define PIN_MOTOR_CL  18
+#else
+  #define PIN_MOTOR_FL  12
+  #define PIN_MOTOR_FR  13
+  #define PIN_MOTOR_BR  14
+  #define PIN_MOTOR_BL  15
 
-#define PIN_MOTOR_AUX1  17
-#define PIN_MOTOR_AUX2  18
+  #define PIN_MOTOR_AUX1  17
+  #define PIN_MOTOR_AUX2  18
+#endif
+
 #define PIN_EXP_TX      19
 #define PIN_EXP_RX      20
 
