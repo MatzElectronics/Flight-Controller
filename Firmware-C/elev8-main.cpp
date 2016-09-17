@@ -1,7 +1,7 @@
 /*
   This file is part of the ELEV-8 Flight Controller Firmware
-  for Parallax part #80204, Revision A
-  Version 1.1.0
+  for Parallax part #80204, Revisions A & B
+  Version 2.0.0
   
   Copyright 2015 Parallax Incorporated
 
@@ -329,7 +329,10 @@ int main()                                    // Main function
 
       #ifdef ENABLE_PING_SENSOR
       int TempHeight = Servo32_GetPing() >> 9;
-      if( TempHeight < 3000 )                   // 10ft == 3048mm, so check to see if we're just under that
+      if( TempHeight < 1150 )                   // This value is altered from the original 10ft == 3048mm
+                                                // Replaced with 1150, which appears to be the highest value where
+                                                // the PING sensor works reliably (noise floor/prop wash).
+                                                // TO DO: different sensor (such as VL53L0X and/or better filtering/mixing)
       {
         long diff = TempHeight - GroundHeight;
 
@@ -422,7 +425,7 @@ void Initialize(void)
   CompassConfigStep = 0;
   FlightMode = FlightMode_Stable;
   ControlMode = ControlMode_AutoLevel;
-  Stats.Version = 0x0110;   // Version 1.10
+  Stats.Version = 0x0200;   // Version 2.0.0
 
   InitSerial();
 
@@ -811,8 +814,13 @@ void UpdateFlightLoop(void)
       
       if( ( Radio.Thro < -1100 && AllowThrottleCut ) || ( idleTimeout <= 0 && IDLE_TIMEOUT != 0))
       {
+<<<<<<< HEAD
         // We're in throttle cut - disarm immediately, set a timer to allow rearm
         for( int i=0; i < MOTOR_COUNT; i++ ) {
+=======
+        // We're in throttle cut - disarm immediately, set a timer to allow rearm OR disarm if idle too long
+        for( int i=0; i<4; i++ ) {
+>>>>>>> master
           Motor[i] = Prefs.MinThrottle;
           Servo32_Set( MotorPin[i], Prefs.MinThrottle );
         }
@@ -820,8 +828,16 @@ void UpdateFlightLoop(void)
         FlightEnabled = 0;
         FlightEnableStep = 0;
         CompassConfigStep = 0;
-        if( idleTimeout <= 0  && IDLE_TIMEOUT != 0 ) ReArmTimer = 250;
-
+        
+        // Start a 1 second countdown
+        if( Radio.Thro < -1100 ) ReArmTimer = 250;   
+        
+        // If the motors have been at idle too long, disarm
+        if( idleTimeout <= 0 ) {                     
+          idleTimeout = IDLE_TIMEOUT * 250;
+          DisarmFlightMode();
+        }
+        
         All_LED( LED_Green & LED_Half );
         loopTimer = CNT;
         return;   // Exit the loop so the motors stay killed, no additional flight code runs
@@ -855,8 +871,11 @@ void UpdateFlightLoop(void)
     int ThroMix = (Radio.Thro + 1024) >> 1;           // Approx 0 - 1024
     ThroMix = clamp( ThroMix, 0, 64 );                // Above 1/16 throttle, clamp it to 64
      
-    //add 12000 to all Output values to make them 'servo friendly' again   (12000 is our output center)
+    // add 12000 to all Output values to make them 'servo friendly' again   (12000 is our output center)
     int NewThroOut = (Radio.Thro << 2) + 12000;
+    
+    // apply throttle cap to provide enough headroom for the control system at full throttle
+    if(NewThroOut > (16000 - THROTTLE_HEADROOM)) NewThroOut = (16000 - THROTTLE_HEADROOM);
 
     //-------------------------------------------
     if( FlightMode != FlightMode_Manual )
@@ -886,7 +905,11 @@ void UpdateFlightLoop(void)
         else
         {
         #ifdef ENABLE_GROUND_HEIGHT
-          bool GoodHeight = (Radio.Aux1 > 0) && ((counter - GroundHeightValidCount) < 30);
+          #ifdef GROUND_HEIGHT_REQUIRE_AUX1
+            bool GoodHeight = (Radio.Aux1 > 0) && ((counter - GroundHeightValidCount) < 30);
+          #else
+            bool GoodHeight = (counter - GroundHeightValidCount) < 30;
+          #endif
           static bool UsedHeight = false;
         #endif
 
