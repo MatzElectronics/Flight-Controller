@@ -814,7 +814,6 @@ void UpdateFlightLoop(void)
       
       if( ( Radio.Thro < -1100 && AllowThrottleCut ) || ( idleTimeout <= 0 && IDLE_TIMEOUT != 0))
       {
-=======
 
         // We're in throttle cut - disarm immediately, set a timer to allow rearm OR disarm if idle too long
         for( int i=0; i < MOTOR_COUNT; i++ ) {
