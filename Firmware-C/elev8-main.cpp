@@ -602,7 +602,7 @@ void InitSerial(void)
 
   // Unused ports get a pin value of 32
   S4_Define_Port(2, 19200,       19, TXBuf3, sizeof(TXBuf3),      20, RXBuf3, sizeof(RXBuf3));
-  S4_Define_Port(3, 115200, PIN_MOTOR_AUX2, TXBuf4, sizeof(TXBuf4), 32, RXBuf4, sizeof(RXBuf4));
+  S4_Define_Port(3, 115200,      32, TXBuf4, sizeof(TXBuf4),      32, RXBuf4, sizeof(RXBuf4));
 
   S4_Start();
 }
