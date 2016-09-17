@@ -814,13 +814,11 @@ void UpdateFlightLoop(void)
       
       if( ( Radio.Thro < -1100 && AllowThrottleCut ) || ( idleTimeout <= 0 && IDLE_TIMEOUT != 0))
       {
-<<<<<<< HEAD
-        // We're in throttle cut - disarm immediately, set a timer to allow rearm
-        for( int i=0; i < MOTOR_COUNT; i++ ) {
 =======
+
         // We're in throttle cut - disarm immediately, set a timer to allow rearm OR disarm if idle too long
-        for( int i=0; i<4; i++ ) {
->>>>>>> master
+        for( int i=0; i < MOTOR_COUNT; i++ ) {
+
           Motor[i] = Prefs.MinThrottle;
           Servo32_Set( MotorPin[i], Prefs.MinThrottle );
         }
